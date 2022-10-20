@@ -23,10 +23,12 @@ void initialize() {
 
 void lock() {
     parent?.lockOrUnlock device.deviceNetworkId, "lock"
+    refresh()
 }
 
 void unlock() {
     parent?.lockOrUnlock device.deviceNetworkId, "unlock"
+    refresh()
 }
 
 void refresh() {

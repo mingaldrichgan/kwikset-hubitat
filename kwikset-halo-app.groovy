@@ -124,7 +124,6 @@ void lockOrUnlock(String deviceId, String action) {
         logError methodName, e
         runIn(retryIntervalInSeconds, methodName, [data: action])
     }
-    refreshDevices()
 }
 
 private Map[] getKwiksetDevices(boolean isInstalling = false) {
