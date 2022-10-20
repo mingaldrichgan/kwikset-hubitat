@@ -23,4 +23,4 @@ This integration uses an [undocumented API](https://pypi.org/project/aiokwikset/
 
 `TODO`
 
-![Screenshot](https://raw.githubusercontent.com/mingaldrichgan/kwikset-hubitat/main/kwikset-halo-app.png)
+![Screenshot](https://github.com/mingaldrichgan/kwikset-hubitat/raw/main/kwikset-halo-app.png)
