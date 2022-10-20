@@ -7,7 +7,7 @@ metadata {
         name: "Kwikset Halo Lock",
         namespace: "mingaldrichgan",
         author: "Ming Aldrich-Gan",
-        importUrl: "https://raw.githubusercontent.com/mingaldrichgan/kwikset-hubitat/main/kwikset-halo-app.groovy"
+        importUrl: "https://raw.githubusercontent.com/mingaldrichgan/kwikset-hubitat/main/kwikset-halo-driver.groovy"
     ) {
         capability "Battery"
         capability "Initialize"
