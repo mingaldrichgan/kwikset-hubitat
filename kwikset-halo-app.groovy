@@ -18,13 +18,32 @@ definition(
 )
 
 preferences {
-    page(name: "mainPage", title: "Setup", install: true, uninstall: true) {
+    page(uninstall: true, install: true) {
+        section(hideable: true, hidden: true, "PRE-REQUISITES") {
+            paragraph "<ul>" +
+                "<li>You need a computer with Python installed, and know how to run terminal commands.</li>" +
+                "<li>You need to have the " +
+                    '<a href="https://www.kwikset.com/smart-locks/app" target="_blank">Kwikset mobile app</a>' +
+                    "with at least one home added to it.</li>" +
+                "<li>Your Kwikset account needs to be associated with a phone number capable of receiving text messages " +
+                    "(to get the verification code during setup).</li>" +
+            "</ul>"
+        }
+        section(hideable: true, "IN YOUR TERMINAL") {
+            paragraph "<ul>" +
+                "<li>Run <kbd>pip install aiokwikset</kbd>.</li>" +
+                "<li>Download " +
+                    '<a href="https://raw.githubusercontent.com/mingaldrichgan/kwikset-hubitat/main/kwikset-halo-setup.py" target="_blank">' +
+                    "<kbd>kwikset-halo-setup.py</kbd></a>and <kbd>cd</kbd> to the download directory.</li>" +
+                "<li>Run <kbd>python kwikset-halo-setup.py</kbd> and follow the prompts to get your Home ID and Refresh Token.</li>" +
+            "</ul>"
+        }
         section {
             input "homeId", "text", title: "Home ID", required: true
-            input "refreshToken", "textarea", title: "Refresh Token", required: true, rows: 20
-            input "refreshIntervalInSeconds", "number", title: "Refresh Interval (seconds)", defaultValue: 60
-            input "retryIntervalInSeconds", "number", title: "Retry Interval (seconds)", defaultValue: 30
-            input "isDebugEnabled", "bool", title: "Enable Debug Logging"
+            input "refreshToken", "textarea", title: "Refresh Token", required: true, rows: 15
+            input "refreshIntervalInSeconds", "number", title: "Refresh Interval (seconds)", defaultValue: 60, width: 4
+            input "retryIntervalInSeconds", "number", title: "Retry Interval (seconds)", defaultValue: 30, width: 4
+            input "isDebugEnabled", "bool", title: "Enable Debug Logging", width: 4
         }
     }
 }
