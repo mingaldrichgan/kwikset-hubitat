@@ -1,11 +1,11 @@
 import asyncio
-
 from aiokwikset import API
+from getpass import getpass
 
 
 async def main() -> None:
     api = API(input("Email: "))
-    pre_auth = await api.authenticate(input("Password: "))
+    pre_auth = await api.authenticate(getpass())
     await api.verify_user(pre_auth, input("Verification Code: "))
     homes = await api.user.get_homes()
 
@@ -15,15 +15,15 @@ async def main() -> None:
             print("You have no homes! Please download the Kwikset app and add one.")
             return
         case 1:
-            print("Home ID:", homes[0]['homeid'])
+            print("Home ID:", homes[0]["homeid"])
         case _:
             print(f"You have {len(homes)} homes!")
             print()
             for home in homes:
-                print("Home ID:", home['homeid'])
-                print("Home Name:", home['homename'])
-                print("Owner Name:", home['ownername'])
-                print("Owner Email:", home['email'])
+                print("Home ID:", home["homeid"])
+                print("Home Name:", home["homename"])
+                print("Owner Name:", home["ownername"])
+                print("Owner Email:", home["email"])
 
     print()
     print("Refresh Token:", api.refresh_token)

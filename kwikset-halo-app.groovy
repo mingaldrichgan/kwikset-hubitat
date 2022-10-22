@@ -2,7 +2,7 @@
     Copyright 2022 Ming Aldrich-Gan.
     Thanks to https://pypi.org/project/aiokwikset/ for reverse-engineering the Kwikset API.
 */
-import com.hubitat.app.ChildDeviceWrapper
+import com.hubitat.app.DeviceWrapper
 import groovy.json.JsonOutput
 import groovyx.net.http.HttpResponseException
 
@@ -41,48 +41,46 @@ preferences {
         section {
             input "homeId", "text", title: "Home ID", required: true
             input "refreshToken", "textarea", title: "Refresh Token", required: true, rows: 15
-            input "refreshIntervalInSeconds", "number", title: "Refresh Interval (seconds)", defaultValue: 60, width: 4
-            input "retryIntervalInSeconds", "number", title: "Retry Interval (seconds)", defaultValue: 30, width: 4
-            input "isDebugEnabled", "bool", title: "Enable Debug Logging", width: 4
+            input "refreshIntervalInSeconds", "number", title: "Refresh Interval (seconds), default: 60", required: true, defaultValue: 60, width: 4
+            input "refreshDelayAfterLockOrUnlock", "number", title: "Refresh Delay After Lock/Unlock (seconds), default: 10", required: true, defaultValue: 10, width: 4
+            input "retryIntervalInSeconds", "number", title: "Retry Interval (seconds), default: 30", required: true, defaultValue: 30, width: 4
+            input "isDebugLoggingEnabled", "bool", title: "Enable Debug Logging", defaultValue: false, width: 4
+            input "isEventLoggingEnabled", "bool", title: "Enable Event Logging", defaultValue: true, width: 4
         }
     }
 }
 
 void installed() {
     refreshTokenAuth(true)
-    for (Map kwiksetDevice in getKwiksetDevices(true)) {
-        addChildDevice kwiksetDevice
-    }
+    getKwiksetDevices(true).each createChildDevice
     refreshDevices()
 }
 
 void updated() {
-    refreshTokenAuth(true)
-
     Map[] kwiksetDevices = getKwiksetDevices(true)
-    String[] kwiksetDeviceIds = kwiksetDevices.deviceid
-    logDebug "Kwikset device IDs present: ${kwiksetDeviceIds}"
+    String[] kwiksetDeviceIds = kwiksetDevices*.deviceid
+    logDebug "Kwikset device IDs: ${kwiksetDeviceIds}"
 
-    ChildDeviceWrapper[] childDevices = getChildDevices()
-    String[] childDeviceIds = childDevices.deviceNetworkId
-    logDebug "Child device IDs present: ${childDeviceIds}"
+    DeviceWrapper[] childDevices = getChildDevices()
+    String[] childDeviceIds = childDevices*.getDataValue("deviceId")
+    logDebug "Child device IDs: ${childDeviceIds}"
 
-    for (ChildDeviceWrapper childDevice in childDevices) {
-        if (!kwiksetDeviceIds.contains(childDevice.deviceNetworkId)) {
+    for (DeviceWrapper childDevice in childDevices) {
+        if (!kwiksetDeviceIds.contains(childDevice.getDataValue("deviceId"))) {
             logDebug "Deleting child device: ${childDevice}"
             deleteChildDevice childDevice.deviceNetworkId
         }
     }
     for (Map kwiksetDevice in kwiksetDevices) {
         if (!childDeviceIds.contains(kwiksetDevice.deviceid)) {
-            addChildDevice kwiksetDevice
+            createChildDevice kwiksetDevice
         }
     }
     refreshDevices()
 }
 
 void uninstalled() {
-    for (ChildDeviceWrapper childDevice in getChildDevices()) {
+    for (DeviceWrapper childDevice in getChildDevices()) {
         logDebug "Deleting child device: ${childDevice}"
         deleteChildDevice childDevice.deviceNetworkId
     }
@@ -121,15 +119,26 @@ void refreshTokenAuth(boolean isInstalling = false) {
 
 void refreshDevices() {
     for (Map kwiksetDevice in getKwiksetDevices()) {
-        ChildDeviceWrapper childDevice = getChildDevice(kwiksetDevice.deviceid)
-        childDevice.sendEvent(name: "battery", value: kwiksetDevice.batterypercentage)
-        childDevice.sendEvent(name: "lock", value: kwiksetDevice.lockstatus.toLowerCase())
+        DeviceWrapper childDevice = getChildDevice(getDeviceNetworkId(kwiksetDevice))
+        String deviceName = childDevice.getLabel()
+
+        if (childDevice.currentValue("battery") != kwiksetDevice.batterypercentage) {
+            childDevice.sendEvent(name: "battery", value: kwiksetDevice.batterypercentage)
+            logEvent "${deviceName} battery is ${kwiksetDevice.batterypercentage}%"
+        }
+
+        String lockValue = kwiksetDevice.lockstatus.toLowerCase();
+        if (childDevice.currentValue("lock") != lockValue) {
+            childDevice.sendEvent(name: "lock", value: lockValue)
+            logEvent "${deviceName} is ${lockValue}"
+        }
     }
     runIn(refreshIntervalInSeconds, "refreshDevices")
 }
 
-void lockOrUnlock(String deviceId, String action) {
+void lockOrUnlock(DeviceWrapper childDevice, String action) {
     String methodName = "lockOrUnlock"
+    String deviceId = childDevice.getDataValue("deviceId")
     Map request = withAuthHeader([
         uri: "https://ynk95r1v52.execute-api.us-east-1.amazonaws.com/prod_v1/devices/${deviceId}/status",
         contentType: "text/plain", // "application/json" results in Bad Request!
@@ -143,6 +152,7 @@ void lockOrUnlock(String deviceId, String action) {
         logError methodName, e
         runIn(retryIntervalInSeconds, methodName, [data: action])
     }
+    runIn(refreshDelayAfterLockOrUnlock, "refreshDevices")
 }
 
 private Map[] getKwiksetDevices(boolean isInstalling = false) {
@@ -170,15 +180,30 @@ private Map withAuthHeader(Map request) {
     return request
 }
 
-private void addChildDevice(Map kwiksetDevice) {
-    String lockName = kwiksetDevice.devicename + " Lock"
-    logDebug "Adding child device named ${lockName} with ID: ${kwiksetDevice.deviceid}"
-    addChildDevice "mingaldrichgan", "Kwikset Halo Lock", kwiksetDevice.deviceid, [name: lockName]
+private void createChildDevice(Map kwiksetDevice) {
+    String lockName = kwiksetDevice.devicename.toLowerCase().endsWith("lock") ? kwiksetDevice.devicename : "${kwiksetDevice.devicename} Lock"
+    String deviceNetworkId = getDeviceNetworkId(kwiksetDevice)
+    logDebug "Adding child device named ${lockName} with Device Network ID: ${deviceNetworkId}"
+    DeviceWrapper childDevice = addChildDevice("mingaldrichgan", "Kwikset Halo Lock", deviceNetworkId, [
+        name: "Kwikset ${kwiksetDevice.modelnumber}",
+        label: lockName
+    ])
+    childDevice.updateDataValue "deviceId", kwiksetDevice.deviceid
+}
+
+private String getDeviceNetworkId(Map kwiksetDevice) {
+    return "${kwiksetDevice.modelnumber}-${kwiksetDevice.deviceid}"
 }
 
 private void logDebug(String message) {
-    if (isDebugEnabled) {
+    if (isDebugLoggingEnabled) {
         log.debug message
+    }
+}
+
+private void logEvent(String message) {
+    if (isEventLoggingEnabled) {
+        log.info message
     }
 }
 
