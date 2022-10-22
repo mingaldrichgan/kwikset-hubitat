@@ -122,16 +122,12 @@ void refreshDevices() {
         DeviceWrapper childDevice = getChildDevice(getDeviceNetworkId(kwiksetDevice))
         String deviceName = childDevice.getLabel()
 
-        if (childDevice.currentValue("battery") != kwiksetDevice.batterypercentage) {
-            childDevice.sendEvent(name: "battery", value: kwiksetDevice.batterypercentage)
-            logEvent "${deviceName} battery is ${kwiksetDevice.batterypercentage}%"
-        }
+        childDevice.sendEvent(name: "battery", value: kwiksetDevice.batterypercentage, unit: "%")
+        logEvent "${deviceName} battery is ${kwiksetDevice.batterypercentage}%"
 
         String lockValue = kwiksetDevice.lockstatus.toLowerCase();
-        if (childDevice.currentValue("lock") != lockValue) {
-            childDevice.sendEvent(name: "lock", value: lockValue)
-            logEvent "${deviceName} is ${lockValue}"
-        }
+        childDevice.sendEvent(name: "lock", value: lockValue)
+        logEvent "${deviceName} is ${lockValue}"
     }
     runIn(refreshIntervalInSeconds, "refreshDevices")
 }
