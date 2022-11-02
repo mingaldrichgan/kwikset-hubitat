@@ -43,7 +43,8 @@ preferences {
             input "refreshToken", "textarea", title: "Refresh Token", required: true, rows: 15
             input "refreshIntervalInSeconds", "number", title: "Refresh Interval (seconds), default: 60", required: true, defaultValue: 60, width: 4
             input "refreshDelayAfterLockOrUnlock", "number", title: "Refresh Delay After Lock/Unlock (seconds), default: 10", required: true, defaultValue: 10, width: 4
-            input "retryIntervalInSeconds", "number", title: "Retry Interval (seconds), default: 30", required: true, defaultValue: 30, width: 4
+            input "refreshSecondsBeforeTokenExpiration", "number", title: "Refresh Seconds Before Token Expiration, default: 60", required: true, defaultValue: 60, width: 4
+            input "retryIntervalInSeconds", "number", title: "Retry Interval (seconds), default: 30", required: true, defaultValue: 60, width: 4
             input "isDebugLoggingEnabled", "bool", title: "Enable Debug Logging", defaultValue: false, width: 4
             input "isEventLoggingEnabled", "bool", title: "Enable Event Logging", defaultValue: true, width: 4
         }
@@ -105,7 +106,7 @@ void refreshTokenAuth(boolean isInstalling = false) {
     try {
         httpPostJson(request) {response ->
             logDebug "${methodName} response: ${response.data}"
-            runIn(response.data.AuthenticationResult.ExpiresIn, "refreshTokenAuth")
+            runIn(response.data.AuthenticationResult.ExpiresIn - refreshSecondsBeforeTokenExpiration, "refreshTokenAuth")
             atomicState.idToken = response.data.AuthenticationResult.IdToken
         }
     } catch (HttpResponseException e) {
@@ -177,7 +178,7 @@ private Map withAuthHeader(Map request) {
 }
 
 private void createChildDevice(Map kwiksetDevice) {
-    String lockName = kwiksetDevice.devicename.toLowerCase().endsWith("lock") ? kwiksetDevice.devicename : "${kwiksetDevice.devicename} Lock"
+    String lockName = kwiksetDevice.devicename.toLowerCase().endsWith(" lock") ? kwiksetDevice.devicename : "${kwiksetDevice.devicename} Lock"
     String deviceNetworkId = getDeviceNetworkId(kwiksetDevice)
     logDebug "Adding child device named ${lockName} with Device Network ID: ${deviceNetworkId}"
     DeviceWrapper childDevice = addChildDevice("mingaldrichgan", "Kwikset Halo Lock", deviceNetworkId, [
